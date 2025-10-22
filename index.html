@@ -148,6 +148,23 @@
             border-bottom: 2px solid #e2e8f0;
             position: sticky;
             top: 0;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        
+        th:hover {
+            background: #e2e8f0;
+        }
+        
+        th.sort-asc::after {
+            content: ' ↑';
+            color: #667eea;
+        }
+        
+        th.sort-desc::after {
+            content: ' ↓';
+            color: #667eea;
         }
         
         td {
@@ -236,16 +253,23 @@
                 <button class="filter-btn" onclick="filterTable('at', this)">At MAP Only</button>
             </div>
             
+            <div style="margin-bottom: 15px;">
+                <label style="margin-right: 10px; font-weight: 600;">Filter by Store:</label>
+                <select id="storeFilter" onchange="applyFilters()" style="padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                    <option value="all">All Stores</option>
+                </select>
+            </div>
+            
             <div style="overflow-x: auto;">
                 <table>
                     <thead>
                         <tr>
-                            <th>Status</th>
-                            <th>Store</th>
-                            <th>VIN</th>
-                            <th>Current Price</th>
-                            <th>MAP Price</th>
-                            <th>Difference</th>
+                            <th onclick="sortTable(0)">Status</th>
+                            <th onclick="sortTable(1)">Store</th>
+                            <th onclick="sortTable(2)">VIN</th>
+                            <th onclick="sortTable(3)">Current Price</th>
+                            <th onclick="sortTable(4)">MAP Price</th>
+                            <th onclick="sortTable(5)">Difference</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
@@ -258,6 +282,9 @@
         let bottomData = null;
         let mapData = null;
         let results = [];
+        let currentStatusFilter = 'all';
+        let currentStoreFilter = 'all';
+        let currentSort = { column: -1, ascending: true };
 
         // Setup drag and drop
         ['bottomDrop', 'mapDrop'].forEach(id => {
@@ -423,19 +450,39 @@
             // Sort by difference (highest first)
             results.sort((a, b) => b.difference - a.difference);
             
+            // Get unique stores for filter dropdown
+            const stores = [...new Set(results.map(r => r.store))].sort();
+            const storeSelect = document.getElementById('storeFilter');
+            storeSelect.innerHTML = '<option value="all">All Stores</option>';
+            stores.forEach(store => {
+                const option = document.createElement('option');
+                option.value = store;
+                option.textContent = store;
+                storeSelect.appendChild(option);
+            });
+            
             // Update display
             document.getElementById('totalStat').textContent = results.length;
             document.getElementById('aboveStat').textContent = above;
             document.getElementById('belowStat').textContent = below;
             document.getElementById('atStat').textContent = at;
             
-            // Build table
+            // Render table
+            renderTable();
+            
+            document.getElementById('results').classList.add('show');
+        }
+        
+        function renderTable(filteredResults = null) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
-            results.forEach(r => {
+            const dataToRender = filteredResults || results;
+            
+            dataToRender.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.dataset.status = r.status.toLowerCase();
+                tr.dataset.store = r.store;
                 
                 let statusClass = 'status-at';
                 let statusSymbol = '✓';
@@ -448,20 +495,18 @@
                 }
                 
                 tr.innerHTML = `
-                    <td class="${statusClass}">${statusSymbol} ${r.status}</td>
-                    <td>${r.store}</td>
-                    <td>${r.vin}</td>
-                    <td>$${r.currentPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
-                    <td>$${r.mapPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
-                    <td class="${statusClass}">
-                        ${r.difference > 0 ? '+' : ''}$${r.difference.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    <td class="${statusClass}" data-sort="${r.status}">${statusSymbol} ${r.status}</td>
+                    <td data-sort="${r.store}">${r.store}</td>
+                    <td data-sort="${r.vin}">${r.vin}</td>
+                    <td data-sort="${r.currentPrice}">${r.currentPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+                    <td data-sort="${r.mapPrice}">${r.mapPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+                    <td class="${statusClass}" data-sort="${r.difference}">
+                        ${r.difference > 0 ? '+' : ''}${r.difference.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                     </td>
                 `;
                 
                 tbody.appendChild(tr);
             });
-            
-            document.getElementById('results').classList.add('show');
         }
 
         function filterTable(filter, btn) {
@@ -469,15 +514,101 @@
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            // Filter rows
+            // Store current filter
+            currentStatusFilter = filter;
+            
+            // Apply all filters
+            applyFilters();
+        }
+        
+        function applyFilters() {
+            const storeFilter = document.getElementById('storeFilter').value;
+            currentStoreFilter = storeFilter;
+            
             const rows = document.querySelectorAll('#tableBody tr');
             rows.forEach(row => {
-                if (filter === 'all') {
-                    row.style.display = '';
-                } else {
-                    row.style.display = row.dataset.status === filter ? '' : 'none';
+                let showRow = true;
+                
+                // Apply status filter
+                if (currentStatusFilter !== 'all' && row.dataset.status !== currentStatusFilter) {
+                    showRow = false;
+                }
+                
+                // Apply store filter
+                if (storeFilter !== 'all' && row.dataset.store !== storeFilter) {
+                    showRow = false;
+                }
+                
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+        
+        function sortTable(columnIndex) {
+            // Update sort direction
+            if (currentSort.column === columnIndex) {
+                currentSort.ascending = !currentSort.ascending;
+            } else {
+                currentSort.column = columnIndex;
+                currentSort.ascending = true;
+            }
+            
+            // Update header indicators
+            document.querySelectorAll('th').forEach((th, index) => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (index === columnIndex) {
+                    th.classList.add(currentSort.ascending ? 'sort-asc' : 'sort-desc');
                 }
             });
+            
+            // Sort the results array
+            const sortedResults = [...results].sort((a, b) => {
+                let valA, valB;
+                
+                switch(columnIndex) {
+                    case 0: // Status
+                        valA = a.status;
+                        valB = b.status;
+                        break;
+                    case 1: // Store
+                        valA = a.store;
+                        valB = b.store;
+                        break;
+                    case 2: // VIN
+                        valA = a.vin;
+                        valB = b.vin;
+                        break;
+                    case 3: // Current Price
+                        valA = a.currentPrice;
+                        valB = b.currentPrice;
+                        break;
+                    case 4: // MAP Price
+                        valA = a.mapPrice;
+                        valB = b.mapPrice;
+                        break;
+                    case 5: // Difference
+                        valA = a.difference;
+                        valB = b.difference;
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                // Handle numeric vs string comparison
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return currentSort.ascending ? valA - valB : valB - valA;
+                } else {
+                    // String comparison
+                    if (valA < valB) return currentSort.ascending ? -1 : 1;
+                    if (valA > valB) return currentSort.ascending ? 1 : -1;
+                    return 0;
+                }
+            });
+            
+            // Re-render table with sorted data
+            renderTable(sortedResults);
+            
+            // Re-apply filters after sorting
+            applyFilters();
         }
 
         function exportExcel() {
