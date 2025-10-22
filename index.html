@@ -153,9 +153,7 @@
             transition: background 0.2s;
         }
         
-        th:hover {
-            background: #e2e8f0;
-        }
+        th:hover { background: #e2e8f0; }
         
         th.sort-asc::after {
             content: ' ↑';
@@ -182,6 +180,13 @@
             background: #48bb78;
             color: white;
             margin-bottom: 20px;
+        }
+        
+        select {
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -255,7 +260,7 @@
             
             <div style="margin-bottom: 15px;">
                 <label style="margin-right: 10px; font-weight: 600;">Filter by Store:</label>
-                <select id="storeFilter" onchange="applyFilters()" style="padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                <select id="storeFilter" onchange="applyFilters()">
                     <option value="all">All Stores</option>
                 </select>
             </div>
@@ -329,7 +334,6 @@
                     document.getElementById('bottomDrop').classList.add('loaded');
                     document.getElementById('bottomName').textContent = '✓ ' + file.name;
                     
-                    // Debug log
                     console.log('Bottom Price loaded:', jsonData.length, 'rows');
                     if (jsonData[1]) {
                         console.log('  Sample VIN (E):', jsonData[1][4]);
@@ -340,7 +344,6 @@
                     document.getElementById('mapDrop').classList.add('loaded');
                     document.getElementById('mapName').textContent = '✓ ' + file.name;
                     
-                    // Debug log
                     console.log('MAP Details loaded:', jsonData.length, 'rows');
                     if (jsonData[1]) {
                         console.log('  Sample VIN (H):', jsonData[1][7]);
@@ -348,7 +351,6 @@
                     }
                 }
                 
-                // Enable analyze button if both files loaded
                 if (bottomData && mapData) {
                     document.getElementById('analyzeBtn').disabled = false;
                 }
@@ -368,7 +370,7 @@
             console.log('\n=== STARTING ANALYSIS ===');
             results = [];
             
-            // Build MAP lookup - Column H (7) for VIN, Column J (9) for price
+            // Build MAP lookup
             const mapLookup = {};
             console.log('Building MAP lookup from', mapData.length, 'rows');
             
@@ -376,10 +378,8 @@
                 const row = mapData[i];
                 if (!row) continue;
                 
-                // Column H = index 7
-                const vin = String(row[7] || '').trim();
-                // Column J = index 9
-                const price = cleanPrice(row[9]);
+                const vin = String(row[7] || '').trim(); // Column H
+                const price = cleanPrice(row[9]); // Column J
                 
                 if (i <= 3) {
                     console.log(`MAP row ${i}: VIN(H)="${vin}", Price(J)="${row[9]}" => $${price}`);
@@ -392,17 +392,15 @@
             
             console.log('MAP lookup built:', Object.keys(mapLookup).length, 'VINs');
             
-            // Process Bottom Price - Column E (4) for VIN, Column J (9) for price
+            // Process Bottom Price
             let above = 0, below = 0, at = 0, notFound = 0;
             
             for (let i = 1; i < bottomData.length; i++) {
                 const row = bottomData[i];
                 if (!row) continue;
                 
-                // Column E = index 4
-                const vin = String(row[4] || '').trim();
-                // Column J = index 9
-                const currentPrice = cleanPrice(row[9]);
+                const vin = String(row[4] || '').trim(); // Column E
+                const currentPrice = cleanPrice(row[9]); // Column J
                 const store = row[0] || 'Unknown';
                 
                 if (i <= 3) {
@@ -450,7 +448,7 @@
             // Sort by difference (highest first)
             results.sort((a, b) => b.difference - a.difference);
             
-            // Get unique stores for filter dropdown
+            // Get unique stores
             const stores = [...new Set(results.map(r => r.store))].sort();
             const storeSelect = document.getElementById('storeFilter');
             storeSelect.innerHTML = '<option value="all">All Stores</option>';
@@ -461,7 +459,7 @@
                 storeSelect.appendChild(option);
             });
             
-            // Update display
+            // Update stats
             document.getElementById('totalStat').textContent = results.length;
             document.getElementById('aboveStat').textContent = above;
             document.getElementById('belowStat').textContent = below;
@@ -473,11 +471,11 @@
             document.getElementById('results').classList.add('show');
         }
         
-        function renderTable(filteredResults = null) {
+        function renderTable(sortedResults = null) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
-            const dataToRender = filteredResults || results;
+            const dataToRender = sortedResults || results;
             
             dataToRender.forEach(r => {
                 const tr = document.createElement('tr');
@@ -494,14 +492,15 @@
                     statusSymbol = '⬇';
                 }
                 
+                // PRICES WITHOUT COMMAS OR DOLLAR SIGNS
                 tr.innerHTML = `
                     <td class="${statusClass}" data-sort="${r.status}">${statusSymbol} ${r.status}</td>
                     <td data-sort="${r.store}">${r.store}</td>
                     <td data-sort="${r.vin}">${r.vin}</td>
-                    <td data-sort="${r.currentPrice}">${r.currentPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
-                    <td data-sort="${r.mapPrice}">${r.mapPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+                    <td data-sort="${r.currentPrice}">${Math.round(r.currentPrice)}</td>
+                    <td data-sort="${r.mapPrice}">${Math.round(r.mapPrice)}</td>
                     <td class="${statusClass}" data-sort="${r.difference}">
-                        ${r.difference > 0 ? '+' : ''}${r.difference.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        ${r.difference > 0 ? '+' : ''}${Math.round(r.difference)}
                     </td>
                 `;
                 
@@ -510,14 +509,9 @@
         }
 
         function filterTable(filter, btn) {
-            // Update active button
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
-            // Store current filter
             currentStatusFilter = filter;
-            
-            // Apply all filters
             applyFilters();
         }
         
@@ -529,12 +523,10 @@
             rows.forEach(row => {
                 let showRow = true;
                 
-                // Apply status filter
                 if (currentStatusFilter !== 'all' && row.dataset.status !== currentStatusFilter) {
                     showRow = false;
                 }
                 
-                // Apply store filter
                 if (storeFilter !== 'all' && row.dataset.store !== storeFilter) {
                     showRow = false;
                 }
@@ -544,7 +536,6 @@
         }
         
         function sortTable(columnIndex) {
-            // Update sort direction
             if (currentSort.column === columnIndex) {
                 currentSort.ascending = !currentSort.ascending;
             } else {
@@ -552,7 +543,6 @@
                 currentSort.ascending = true;
             }
             
-            // Update header indicators
             document.querySelectorAll('th').forEach((th, index) => {
                 th.classList.remove('sort-asc', 'sort-desc');
                 if (index === columnIndex) {
@@ -560,54 +550,29 @@
                 }
             });
             
-            // Sort the results array
             const sortedResults = [...results].sort((a, b) => {
                 let valA, valB;
                 
                 switch(columnIndex) {
-                    case 0: // Status
-                        valA = a.status;
-                        valB = b.status;
-                        break;
-                    case 1: // Store
-                        valA = a.store;
-                        valB = b.store;
-                        break;
-                    case 2: // VIN
-                        valA = a.vin;
-                        valB = b.vin;
-                        break;
-                    case 3: // Current Price
-                        valA = a.currentPrice;
-                        valB = b.currentPrice;
-                        break;
-                    case 4: // MAP Price
-                        valA = a.mapPrice;
-                        valB = b.mapPrice;
-                        break;
-                    case 5: // Difference
-                        valA = a.difference;
-                        valB = b.difference;
-                        break;
-                    default:
-                        return 0;
+                    case 0: valA = a.status; valB = b.status; break;
+                    case 1: valA = a.store; valB = b.store; break;
+                    case 2: valA = a.vin; valB = b.vin; break;
+                    case 3: valA = a.currentPrice; valB = b.currentPrice; break;
+                    case 4: valA = a.mapPrice; valB = b.mapPrice; break;
+                    case 5: valA = a.difference; valB = b.difference; break;
+                    default: return 0;
                 }
                 
-                // Handle numeric vs string comparison
                 if (typeof valA === 'number' && typeof valB === 'number') {
                     return currentSort.ascending ? valA - valB : valB - valA;
                 } else {
-                    // String comparison
                     if (valA < valB) return currentSort.ascending ? -1 : 1;
                     if (valA > valB) return currentSort.ascending ? 1 : -1;
                     return 0;
                 }
             });
             
-            // Re-render table with sorted data
             renderTable(sortedResults);
-            
-            // Re-apply filters after sorting
             applyFilters();
         }
 
