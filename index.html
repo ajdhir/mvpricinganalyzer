@@ -191,7 +191,7 @@
                 <div class="file-drop" id="mapDetailsDrop">
                     <h3>📋 MAP Details File</h3>
                     <p>Drop your Excel file here or click to browse</p>
-                    <p style="font-size: 0.8rem; color: #667eea;">VIN: Column G | MAP Price: Column I</p>
+                    <p style="font-size: 0.8rem; color: #667eea;">VIN: Column H | MAP Price: Column J</p>
                     <input type="file" id="mapDetailsFile" accept=".xlsx,.xls">
                     <div id="mapFileName" style="margin-top: 10px; color: #48bb78; font-weight: 600;"></div>
                 </div>
@@ -291,8 +291,8 @@
                     mapDetailsData = jsonData;
                     // Show sample VIN and MAP price
                     if (jsonData[1]) {
-                        console.log(`  Sample VIN (Col G): ${jsonData[1][6]}`);
-                        console.log(`  Sample MAP Price (Col I): ${jsonData[1][8]}`);
+                        console.log(`  Sample VIN (Col H): ${jsonData[1][7]}`);
+                        console.log(`  Sample MAP Price (Col J): ${jsonData[1][9]}`);
                     }
                 }
                 
