@@ -3,14 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vehicle Price Analyzer - Fixed</title>
+    <title>Vehicle MAP Price Analyzer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -19,10 +15,7 @@
             padding: 20px;
         }
         
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
         
         .header {
             text-align: center;
@@ -30,10 +23,7 @@
             margin-bottom: 30px;
         }
         
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
         
         .upload-section {
             background: white;
@@ -55,9 +45,9 @@
             border-radius: 15px;
             padding: 40px 20px;
             text-align: center;
-            transition: all 0.3s ease;
             cursor: pointer;
             background: #f7fafc;
+            transition: all 0.3s;
         }
         
         .file-drop:hover {
@@ -70,34 +60,27 @@
             background: #f0fff4;
         }
         
-        .file-drop h3 {
-            color: #2d3748;
-            margin-bottom: 10px;
-        }
+        .file-drop h3 { color: #2d3748; margin-bottom: 10px; }
+        .file-drop p { color: #718096; font-size: 0.9rem; }
+        .file-name { margin-top: 10px; color: #48bb78; font-weight: 600; }
         
-        .file-drop p {
-            color: #718096;
-            font-size: 0.9rem;
-        }
+        input[type="file"] { display: none; }
         
-        input[type="file"] {
-            display: none;
-        }
-        
-        .analyze-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.1rem;
+        .btn {
+            padding: 12px 30px;
+            border-radius: 8px;
             font-weight: 600;
-            border-radius: 10px;
+            border: none;
             cursor: pointer;
-            display: block;
-            margin: 0 auto;
+            transition: all 0.3s;
         }
         
-        .analyze-btn:disabled {
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
@@ -110,35 +93,51 @@
             display: none;
         }
         
-        .results-section.show {
-            display: block;
-        }
+        .results-section.show { display: block; }
         
         .stats {
-            display: flex;
-            justify-content: space-around;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
             margin-bottom: 30px;
         }
         
-        .stat {
+        .stat-card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 12px;
             text-align: center;
         }
         
         .stat-value {
             font-size: 2rem;
             font-weight: bold;
-            color: #667eea;
+            margin-bottom: 5px;
         }
         
-        .stat-label {
-            color: #718096;
-            margin-top: 5px;
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn:hover { background: #f7fafc; }
+        .filter-btn.active { background: #667eea; color: white; border-color: #667eea; }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            font-size: 0.95rem;
         }
         
         th {
@@ -147,26 +146,24 @@
             text-align: left;
             font-weight: 600;
             border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
         }
         
         td {
-            padding: 12px;
+            padding: 10px 12px;
             border-bottom: 1px solid #e2e8f0;
         }
         
-        .price-diff {
-            color: #e53e3e;
-            font-weight: 600;
-        }
+        tr:hover { background: #f7fafc; }
+        
+        .status-above { color: #e53e3e; font-weight: 600; }
+        .status-below { color: #48bb78; font-weight: 600; }
+        .status-at { color: #718096; }
         
         .export-btn {
             background: #48bb78;
             color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
             margin-bottom: 20px;
         }
     </style>
@@ -174,133 +171,158 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚗 Vehicle Price Analyzer</h1>
-            <p>Find vehicles priced above MAP instantly</p>
+            <h1>🚗 Vehicle MAP Price Analyzer</h1>
+            <p>Compare current prices against MAP pricing</p>
         </div>
         
         <div class="upload-section">
             <div class="file-inputs">
-                <div class="file-drop" id="bottomPriceDrop">
+                <div class="file-drop" id="bottomDrop" onclick="document.getElementById('bottomFile').click()">
                     <h3>📊 Bottom Price File</h3>
-                    <p>Drop your Excel file here or click to browse</p>
-                    <p style="font-size: 0.8rem; color: #667eea;">VIN: Column E | Price: Column J</p>
-                    <input type="file" id="bottomPriceFile" accept=".xlsx,.xls">
-                    <div id="bottomFileName" style="margin-top: 10px; color: #48bb78; font-weight: 600;"></div>
+                    <p>Drop Excel/CSV file or click to browse</p>
+                    <p style="color: #667eea; font-size: 0.85rem; margin-top: 10px;">
+                        VIN: Column E | Current Price: Column J
+                    </p>
+                    <input type="file" id="bottomFile" accept=".xlsx,.xls,.csv">
+                    <div class="file-name" id="bottomName"></div>
                 </div>
                 
-                <div class="file-drop" id="mapDetailsDrop">
+                <div class="file-drop" id="mapDrop" onclick="document.getElementById('mapFile').click()">
                     <h3>📋 MAP Details File</h3>
-                    <p>Drop your Excel file here or click to browse</p>
-                    <p style="font-size: 0.8rem; color: #667eea;">VIN: Column H | MAP Price: Column J</p>
-                    <input type="file" id="mapDetailsFile" accept=".xlsx,.xls">
-                    <div id="mapFileName" style="margin-top: 10px; color: #48bb78; font-weight: 600;"></div>
+                    <p>Drop Excel/CSV file or click to browse</p>
+                    <p style="color: #667eea; font-size: 0.85rem; margin-top: 10px;">
+                        VIN: Column H | MAP Price: Column J
+                    </p>
+                    <input type="file" id="mapFile" accept=".xlsx,.xls,.csv">
+                    <div class="file-name" id="mapName"></div>
                 </div>
             </div>
             
-            <button class="analyze-btn" id="analyzeBtn" disabled>Analyze Pricing</button>
+            <div style="text-align: center;">
+                <button class="btn btn-primary" id="analyzeBtn" disabled onclick="analyze()">
+                    Analyze Pricing
+                </button>
+            </div>
         </div>
         
         <div class="results-section" id="results">
             <h2 style="margin-bottom: 20px;">Analysis Results</h2>
+            
             <div class="stats">
-                <div class="stat">
-                    <div class="stat-value" id="totalVehicles">0</div>
-                    <div class="stat-label">Total Vehicles</div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalStat">0</div>
+                    <div>Total Matched</div>
                 </div>
-                <div class="stat">
-                    <div class="stat-value" id="issuesFound">0</div>
-                    <div class="stat-label">Above MAP</div>
+                <div class="stat-card">
+                    <div class="stat-value status-above" id="aboveStat">0</div>
+                    <div>Above MAP</div>
                 </div>
-                <div class="stat">
-                    <div class="stat-value" id="totalDiff">$0</div>
-                    <div class="stat-label">Total Overage</div>
+                <div class="stat-card">
+                    <div class="stat-value status-below" id="belowStat">0</div>
+                    <div>Below MAP</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value status-at" id="atStat">0</div>
+                    <div>At MAP</div>
                 </div>
             </div>
             
-            <button class="export-btn" id="exportBtn">Export to Excel</button>
+            <button class="btn export-btn" onclick="exportExcel()">📥 Export to Excel</button>
             
-            <div id="tableContainer"></div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterTable('all', this)">Show All</button>
+                <button class="filter-btn" onclick="filterTable('above', this)">Above MAP Only</button>
+                <button class="filter-btn" onclick="filterTable('below', this)">Below MAP Only</button>
+                <button class="filter-btn" onclick="filterTable('at', this)">At MAP Only</button>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Store</th>
+                            <th>VIN</th>
+                            <th>Current Price</th>
+                            <th>MAP Price</th>
+                            <th>Difference</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
-        let bottomPriceData = null;
-        let mapDetailsData = null;
-        let analysisResults = [];
+        let bottomData = null;
+        let mapData = null;
+        let results = [];
 
-        // Setup file drop zones
-        function setupDropZone(dropId, inputId, displayId, dataStore) {
-            const dropZone = document.getElementById(dropId);
-            const fileInput = document.getElementById(inputId);
-            const display = document.getElementById(displayId);
-            
-            dropZone.addEventListener('click', () => fileInput.click());
-            
-            dropZone.addEventListener('dragover', (e) => {
+        // Setup drag and drop
+        ['bottomDrop', 'mapDrop'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('dragover', e => {
                 e.preventDefault();
-                dropZone.style.borderColor = '#667eea';
+                el.style.borderColor = '#667eea';
             });
-            
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.style.borderColor = '#cbd5e0';
+            el.addEventListener('dragleave', () => {
+                el.style.borderColor = '#cbd5e0';
             });
-            
-            dropZone.addEventListener('drop', (e) => {
+            el.addEventListener('drop', e => {
                 e.preventDefault();
-                dropZone.style.borderColor = '#cbd5e0';
-                if (e.dataTransfer.files.length > 0) {
-                    handleFile(e.dataTransfer.files[0], dropZone, display, dataStore);
-                }
+                el.style.borderColor = '#cbd5e0';
+                const file = e.dataTransfer.files[0];
+                const input = id === 'bottomDrop' ? 'bottomFile' : 'mapFile';
+                handleFile(file, input);
             });
-            
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleFile(e.target.files[0], dropZone, display, dataStore);
-                }
-            });
-        }
+        });
 
-        function handleFile(file, dropZone, display, dataStore) {
+        // File input handlers
+        document.getElementById('bottomFile').addEventListener('change', e => {
+            if (e.target.files[0]) handleFile(e.target.files[0], 'bottomFile');
+        });
+        
+        document.getElementById('mapFile').addEventListener('change', e => {
+            if (e.target.files[0]) handleFile(e.target.files[0], 'mapFile');
+        });
+
+        function handleFile(file, inputId) {
             const reader = new FileReader();
+            const isBottom = inputId === 'bottomFile';
             
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
                 
-                // Convert to array of arrays
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-                    header: 1,
-                    raw: false,  // Get formatted strings
-                    defval: ''
-                });
-                
-                console.log(`Loaded ${file.name}:`);
-                console.log(`  Rows: ${jsonData.length}`);
-                console.log(`  First data row:`, jsonData[1]);
-                
-                if (dataStore === 'bottom') {
-                    bottomPriceData = jsonData;
-                    // Show sample VIN and price
+                if (isBottom) {
+                    bottomData = jsonData;
+                    document.getElementById('bottomDrop').classList.add('loaded');
+                    document.getElementById('bottomName').textContent = '✓ ' + file.name;
+                    
+                    // Debug log
+                    console.log('Bottom Price loaded:', jsonData.length, 'rows');
                     if (jsonData[1]) {
-                        console.log(`  Sample VIN (Col E): ${jsonData[1][4]}`);
-                        console.log(`  Sample Price (Col J): ${jsonData[1][9]}`);
+                        console.log('  Sample VIN (E):', jsonData[1][4]);
+                        console.log('  Sample Price (J):', jsonData[1][9]);
                     }
                 } else {
-                    mapDetailsData = jsonData;
-                    // Show sample VIN and MAP price
+                    mapData = jsonData;
+                    document.getElementById('mapDrop').classList.add('loaded');
+                    document.getElementById('mapName').textContent = '✓ ' + file.name;
+                    
+                    // Debug log
+                    console.log('MAP Details loaded:', jsonData.length, 'rows');
                     if (jsonData[1]) {
-                        console.log(`  Sample VIN (Col H): ${jsonData[1][7]}`);
-                        console.log(`  Sample MAP Price (Col J): ${jsonData[1][9]}`);
+                        console.log('  Sample VIN (H):', jsonData[1][7]);
+                        console.log('  Sample Price (J):', jsonData[1][9]);
                     }
                 }
                 
-                dropZone.classList.add('loaded');
-                display.textContent = `✓ ${file.name}`;
-                
                 // Enable analyze button if both files loaded
-                if (bottomPriceData && mapDetailsData) {
+                if (bottomData && mapData) {
                     document.getElementById('analyzeBtn').disabled = false;
                 }
             };
@@ -308,238 +330,172 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function cleanPrice(value) {
-            // Handle various price formats
-            if (value == null || value === '') return 0;
-            
-            // If it's already a number, return it
-            if (typeof value === 'number') return value;
-            
-            // Convert to string and clean
-            let str = String(value);
-            
-            // Remove all non-numeric characters except decimal point and minus
-            str = str.replace(/[^0-9.-]/g, '');
-            
-            // Parse to number
-            const num = parseFloat(str);
-            
-            // Return 0 if parsing failed
-            return isNaN(num) ? 0 : num;
+        function cleanPrice(val) {
+            if (!val && val !== 0) return 0;
+            if (typeof val === 'number') return val;
+            const cleaned = String(val).replace(/[^0-9.-]/g, '');
+            return parseFloat(cleaned) || 0;
         }
 
-        function analyzeData() {
+        function analyze() {
             console.log('\n=== STARTING ANALYSIS ===');
+            results = [];
             
-            // Build MAP price lookup
+            // Build MAP lookup - Column H (7) for VIN, Column J (9) for price
             const mapLookup = {};
-            let mapCount = 0;
+            console.log('Building MAP lookup from', mapData.length, 'rows');
             
-            for (let i = 1; i < mapDetailsData.length; i++) {
-                const vin = String(mapDetailsData[i][6] || '').trim(); // Column G
-                const rawPrice = mapDetailsData[i][8]; // Column I
-                const price = cleanPrice(rawPrice);
+            for (let i = 1; i < mapData.length; i++) {
+                const row = mapData[i];
+                if (!row) continue;
                 
-                if (vin && vin.length > 10) {
+                // Column H = index 7
+                const vin = String(row[7] || '').trim();
+                // Column J = index 9
+                const price = cleanPrice(row[9]);
+                
+                if (i <= 3) {
+                    console.log(`MAP row ${i}: VIN(H)="${vin}", Price(J)="${row[9]}" => $${price}`);
+                }
+                
+                if (vin && vin.length >= 17) {
                     mapLookup[vin] = price;
-                    if (price > 0) mapCount++;
-                    
-                    // Debug first few
-                    if (i <= 3) {
-                        console.log(`MAP row ${i}: VIN=${vin}, Raw="${rawPrice}", Clean=${price}`);
-                    }
                 }
             }
             
-            console.log(`Loaded ${Object.keys(mapLookup).length} VINs, ${mapCount} with prices > 0`);
+            console.log('MAP lookup built:', Object.keys(mapLookup).length, 'VINs');
             
-            // Analyze ALL vehicles, not just those above MAP
-            const results = [];
-            let totalRows = 0;
-            let matchedRows = 0;
-            let aboveCount = 0;
-            let belowCount = 0;
-            let atMapCount = 0;
+            // Process Bottom Price - Column E (4) for VIN, Column J (9) for price
+            let above = 0, below = 0, at = 0, notFound = 0;
             
-            for (let i = 1; i < bottomPriceData.length; i++) {
-                totalRows++;
+            for (let i = 1; i < bottomData.length; i++) {
+                const row = bottomData[i];
+                if (!row) continue;
                 
-                const vin = String(bottomPriceData[i][4] || '').trim(); // Column E
-                const rawCurrent = bottomPriceData[i][9]; // Column J
-                const currentPrice = cleanPrice(rawCurrent);
-                const store = bottomPriceData[i][0] || 'Unknown';
+                // Column E = index 4
+                const vin = String(row[4] || '').trim();
+                // Column J = index 9
+                const currentPrice = cleanPrice(row[9]);
+                const store = row[0] || 'Unknown';
                 
-                if (!vin || vin.length < 10) continue;
-                
-                // Debug first few
                 if (i <= 3) {
-                    console.log(`Bottom row ${i}: VIN=${vin}, Raw="${rawCurrent}", Current=${currentPrice}`);
+                    console.log(`Bottom row ${i}: VIN(E)="${vin}", Price(J)="${row[9]}" => $${currentPrice}`);
                 }
+                
+                if (!vin || vin.length < 17 || currentPrice <= 0) continue;
                 
                 const mapPrice = mapLookup[vin];
                 
-                if (mapPrice !== undefined && mapPrice > 0 && currentPrice > 0) {
-                    matchedRows++;
-                    
-                    const difference = currentPrice - mapPrice;
-                    let status = '';
-                    
-                    if (currentPrice > mapPrice) {
-                        status = 'ABOVE';
-                        aboveCount++;
-                    } else if (currentPrice < mapPrice) {
-                        status = 'BELOW';
-                        belowCount++;
-                    } else {
-                        status = 'AT MAP';
-                        atMapCount++;
-                    }
-                    
-                    results.push({
-                        store: store,
-                        vin: vin,
-                        currentPrice: currentPrice,
-                        mapPrice: mapPrice,
-                        difference: difference,
-                        status: status
-                    });
+                if (mapPrice === undefined) {
+                    notFound++;
+                    if (notFound <= 3) console.log(`  VIN not found: ${vin}`);
+                    continue;
                 }
-            }
-            
-            console.log(`\nAnalyzed ${totalRows} vehicles`);
-            console.log(`Matched ${matchedRows} with MAP prices`);
-            console.log(`Above MAP: ${aboveCount}, Below MAP: ${belowCount}, At MAP: ${atMapCount}`);
-            
-            // Sort by difference (highest first, so biggest overages show at top)
-            results.sort((a, b) => b.difference - a.difference);
-            
-            // Store for export
-            analysisResults = results;
-            
-            // Display results
-            displayResults(results, aboveCount, belowCount, atMapCount);
-        }
-
-        function displayResults(results, aboveCount, belowCount, atMapCount) {
-            document.getElementById('results').classList.add('show');
-            
-            // Update stats to show all categories
-            document.getElementById('totalVehicles').textContent = results.length;
-            document.getElementById('issuesFound').innerHTML = 
-                `<span style="color: #e53e3e">${aboveCount} Above</span><br>` +
-                `<span style="color: #48bb78">${belowCount} Below</span><br>` +
-                `<span style="color: #718096">${atMapCount} At MAP</span>`;
-            
-            let totalOverage = 0;
-            let totalSavings = 0;
-            results.forEach(r => {
-                if (r.difference > 0) totalOverage += r.difference;
-                else if (r.difference < 0) totalSavings += Math.abs(r.difference);
-            });
-            
-            document.getElementById('totalDiff').innerHTML = 
-                `<span style="color: #e53e3e">+${totalOverage.toFixed(0)}</span><br>` +
-                `<span style="color: #48bb78">-${totalSavings.toFixed(0)}</span>`;
-            
-            // Add filter buttons
-            let html = '<div style="margin-bottom: 20px;">';
-            html += '<button onclick="filterResults(\'all\')" style="margin-right: 10px; padding: 8px 16px; border: 1px solid #ccc; border-radius: 5px; background: #fff; cursor: pointer;">Show All (' + results.length + ')</button>';
-            html += '<button onclick="filterResults(\'above\')" style="margin-right: 10px; padding: 8px 16px; border: 1px solid #e53e3e; border-radius: 5px; background: #fee; color: #e53e3e; cursor: pointer;">Above MAP (' + aboveCount + ')</button>';
-            html += '<button onclick="filterResults(\'below\')" style="margin-right: 10px; padding: 8px 16px; border: 1px solid #48bb78; border-radius: 5px; background: #f0fff4; color: #48bb78; cursor: pointer;">Below MAP (' + belowCount + ')</button>';
-            html += '<button onclick="filterResults(\'at\')" style="padding: 8px 16px; border: 1px solid #718096; border-radius: 5px; background: #f7fafc; color: #718096; cursor: pointer;">At MAP (' + atMapCount + ')</button>';
-            html += '</div>';
-            
-            // Build table
-            html += '<table><thead><tr>';
-            html += '<th>Status</th><th>Store</th><th>VIN</th><th>Current Price</th><th>MAP Price</th><th>Difference</th>';
-            html += '</tr></thead><tbody id="resultsTableBody">';
-            
-            if (results.length === 0) {
-                html += '<tr><td colspan="6" style="text-align:center; padding: 40px;">';
-                html += 'No vehicles found with MAP prices</td></tr>';
-            } else {
-                results.forEach(r => {
-                    let statusColor = '';
-                    let statusSymbol = '';
-                    if (r.status === 'ABOVE') {
-                        statusColor = '#e53e3e';
-                        statusSymbol = '⬆️';
-                    } else if (r.status === 'BELOW') {
-                        statusColor = '#48bb78';
-                        statusSymbol = '⬇️';
-                    } else {
-                        statusColor = '#718096';
-                        statusSymbol = '✓';
-                    }
-                    
-                    html += `<tr data-status="${r.status.toLowerCase()}">`;
-                    html += `<td><span style="color: ${statusColor}">${statusSymbol} ${r.status}</span></td>`;
-                    html += `<td>${r.store}</td>`;
-                    html += `<td>${r.vin}</td>`;
-                    html += `<td>${r.currentPrice.toFixed(0)}</td>`;
-                    html += `<td>${r.mapPrice.toFixed(0)}</td>`;
-                    
-                    if (r.difference > 0) {
-                        html += `<td style="color: #e53e3e; font-weight: 600;">+${r.difference.toFixed(0)}</td>`;
-                    } else if (r.difference < 0) {
-                        html += `<td style="color: #48bb78; font-weight: 600;">-${Math.abs(r.difference).toFixed(0)}</td>`;
-                    } else {
-                        html += `<td style="color: #718096;">$0</td>`;
-                    }
-                    
-                    html += '</tr>';
+                
+                const diff = currentPrice - mapPrice;
+                let status = '';
+                
+                if (diff > 0) {
+                    status = 'ABOVE';
+                    above++;
+                } else if (diff < 0) {
+                    status = 'BELOW';
+                    below++;
+                } else {
+                    status = 'AT';
+                    at++;
+                }
+                
+                results.push({
+                    status: status,
+                    store: store,
+                    vin: vin,
+                    currentPrice: currentPrice,
+                    mapPrice: mapPrice,
+                    difference: diff
                 });
             }
             
-            html += '</tbody></table>';
-            document.getElementById('tableContainer').innerHTML = html;
+            console.log(`\nResults: ${results.length} matched`);
+            console.log(`Above: ${above}, Below: ${below}, At: ${at}`);
+            console.log(`Not found in MAP: ${notFound}`);
+            
+            // Sort by difference (highest first)
+            results.sort((a, b) => b.difference - a.difference);
+            
+            // Update display
+            document.getElementById('totalStat').textContent = results.length;
+            document.getElementById('aboveStat').textContent = above;
+            document.getElementById('belowStat').textContent = below;
+            document.getElementById('atStat').textContent = at;
+            
+            // Build table
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            results.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.dataset.status = r.status.toLowerCase();
+                
+                let statusClass = 'status-at';
+                let statusSymbol = '✓';
+                if (r.status === 'ABOVE') {
+                    statusClass = 'status-above';
+                    statusSymbol = '⬆';
+                } else if (r.status === 'BELOW') {
+                    statusClass = 'status-below';
+                    statusSymbol = '⬇';
+                }
+                
+                tr.innerHTML = `
+                    <td class="${statusClass}">${statusSymbol} ${r.status}</td>
+                    <td>${r.store}</td>
+                    <td>${r.vin}</td>
+                    <td>$${r.currentPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+                    <td>$${r.mapPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+                    <td class="${statusClass}">
+                        ${r.difference > 0 ? '+' : ''}$${r.difference.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    </td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            document.getElementById('results').classList.add('show');
         }
-        
-        // Add filter function
-        window.filterResults = function(filter) {
-            const rows = document.querySelectorAll('#resultsTableBody tr');
+
+        function filterTable(filter, btn) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Filter rows
+            const rows = document.querySelectorAll('#tableBody tr');
             rows.forEach(row => {
                 if (filter === 'all') {
                     row.style.display = '';
-                } else if (filter === 'above') {
-                    row.style.display = row.dataset.status === 'above' ? '' : 'none';
-                } else if (filter === 'below') {
-                    row.style.display = row.dataset.status === 'below' ? '' : 'none';
-                } else if (filter === 'at') {
-                    row.style.display = row.dataset.status === 'at map' ? '' : 'none';
+                } else {
+                    row.style.display = row.dataset.status === filter ? '' : 'none';
                 }
             });
         }
 
-        function exportResults() {
-            if (analysisResults.length === 0) {
-                alert('No results to export');
+        function exportExcel() {
+            if (results.length === 0) {
+                alert('No data to export');
                 return;
             }
             
-            // Create new workbook
-            const wb = XLSX.utils.book_new();
-            
-            // Convert results to array format
-            const data = [['Store', 'VIN', 'Current Price', 'MAP Price', 'Overage']];
-            analysisResults.forEach(r => {
-                data.push([r.store, r.vin, r.currentPrice, r.mapPrice, r.difference]);
+            const ws_data = [['Status', 'Store', 'VIN', 'Current Price', 'MAP Price', 'Difference']];
+            results.forEach(r => {
+                ws_data.push([r.status, r.store, r.vin, r.currentPrice, r.mapPrice, r.difference]);
             });
             
-            // Create worksheet
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            XLSX.utils.book_append_sheet(wb, ws, 'Analysis Results');
-            
-            // Save file
-            XLSX.writeFile(wb, `price_analysis_${new Date().toISOString().slice(0,10)}.xlsx`);
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'MAP Analysis');
+            XLSX.writeFile(wb, `MAP_Analysis_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
-
-        // Initialize
-        setupDropZone('bottomPriceDrop', 'bottomPriceFile', 'bottomFileName', 'bottom');
-        setupDropZone('mapDetailsDrop', 'mapDetailsFile', 'mapFileName', 'map');
-        
-        document.getElementById('analyzeBtn').addEventListener('click', analyzeData);
-        document.getElementById('exportBtn').addEventListener('click', exportResults);
     </script>
 </body>
 </html>
