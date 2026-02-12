@@ -258,11 +258,31 @@
                 <button class="filter-btn" onclick="filterTable('at', this)">At MAP Only</button>
             </div>
             
-            <div style="margin-bottom: 15px;">
-                <label style="margin-right: 10px; font-weight: 600;">Filter by Store:</label>
-                <select id="storeFilter" onchange="applyFilters()">
-                    <option value="all">All Stores</option>
-                </select>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; align-items: center;">
+                <div>
+                    <label style="margin-right: 5px; font-weight: 600;">Store:</label>
+                    <select id="storeFilter" onchange="applyFilters()">
+                        <option value="all">All Stores</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="margin-right: 5px; font-weight: 600;">Year:</label>
+                    <select id="yearFilter" onchange="applyFilters()">
+                        <option value="all">All Years</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="margin-right: 5px; font-weight: 600;">Make:</label>
+                    <select id="makeFilter" onchange="applyFilters()">
+                        <option value="all">All Makes</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="margin-right: 5px; font-weight: 600;">Model:</label>
+                    <select id="modelFilter" onchange="applyFilters()">
+                        <option value="all">All Models</option>
+                    </select>
+                </div>
             </div>
             
             <div style="overflow-x: auto;">
@@ -271,10 +291,13 @@
                         <tr>
                             <th onclick="sortTable(0)">Status</th>
                             <th onclick="sortTable(1)">Store</th>
-                            <th onclick="sortTable(2)">VIN</th>
-                            <th onclick="sortTable(3)">Current Price</th>
-                            <th onclick="sortTable(4)">MAP Price</th>
-                            <th onclick="sortTable(5)">Difference</th>
+                            <th onclick="sortTable(2)">Year</th>
+                            <th onclick="sortTable(3)">Make</th>
+                            <th onclick="sortTable(4)">Model</th>
+                            <th onclick="sortTable(5)">VIN</th>
+                            <th onclick="sortTable(6)">Current Price</th>
+                            <th onclick="sortTable(7)">MAP Price</th>
+                            <th onclick="sortTable(8)">Difference</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
@@ -290,6 +313,21 @@
         let currentStatusFilter = 'all';
         let currentStoreFilter = 'all';
         let currentSort = { column: -1, ascending: true };
+        let currentYearFilter = 'all';
+        let currentMakeFilter = 'all';
+        let currentModelFilter = 'all';
+
+        // Auto-detect column index by header name
+        function findColumn(headers, names) {
+            if (!headers) return -1;
+            for (let i = 0; i < headers.length; i++) {
+                const h = String(headers[i] || '').trim().toLowerCase();
+                for (const name of names) {
+                    if (h === name.toLowerCase()) return i;
+                }
+            }
+            return -1;
+        }
 
         // Setup drag and drop
         ['bottomDrop', 'mapDrop'].forEach(id => {
@@ -369,57 +407,78 @@
         function analyze() {
             console.log('\n=== STARTING ANALYSIS ===');
             results = [];
-            
-            // Build MAP lookup
+
+            // Detect Year/Make/Model columns from headers in both files
+            const bottomHeaders = bottomData[0] || [];
+            const mapHeaders = mapData[0] || [];
+
+            const bYearCol = findColumn(bottomHeaders, ['year', 'yr', 'model year']);
+            const bMakeCol = findColumn(bottomHeaders, ['make', 'manufacturer']);
+            const bModelCol = findColumn(bottomHeaders, ['model', 'model name']);
+
+            const mYearCol = findColumn(mapHeaders, ['year', 'yr', 'model year']);
+            const mMakeCol = findColumn(mapHeaders, ['make', 'manufacturer']);
+            const mModelCol = findColumn(mapHeaders, ['model', 'model name']);
+
+            console.log('Bottom file Year/Make/Model columns:', bYearCol, bMakeCol, bModelCol);
+            console.log('MAP file Year/Make/Model columns:', mYearCol, mMakeCol, mModelCol);
+
+            // Build MAP lookup (include YMM from MAP file)
             const mapLookup = {};
             console.log('Building MAP lookup from', mapData.length, 'rows');
-            
+
             for (let i = 1; i < mapData.length; i++) {
                 const row = mapData[i];
                 if (!row) continue;
-                
+
                 const vin = String(row[7] || '').trim(); // Column H
                 const price = cleanPrice(row[9]); // Column J
-                
+
                 if (i <= 3) {
                     console.log(`MAP row ${i}: VIN(H)="${vin}", Price(J)="${row[9]}" => $${price}`);
                 }
-                
+
                 if (vin && vin.length >= 17) {
-                    mapLookup[vin] = price;
+                    mapLookup[vin] = {
+                        price: price,
+                        year: mYearCol >= 0 ? String(row[mYearCol] || '').trim() : '',
+                        make: mMakeCol >= 0 ? String(row[mMakeCol] || '').trim() : '',
+                        model: mModelCol >= 0 ? String(row[mModelCol] || '').trim() : ''
+                    };
                 }
             }
-            
+
             console.log('MAP lookup built:', Object.keys(mapLookup).length, 'VINs');
-            
+
             // Process Bottom Price
             let above = 0, below = 0, at = 0, notFound = 0;
-            
+
             for (let i = 1; i < bottomData.length; i++) {
                 const row = bottomData[i];
                 if (!row) continue;
-                
+
                 const vin = String(row[4] || '').trim(); // Column E
                 const currentPrice = cleanPrice(row[9]); // Column J
                 const store = row[0] || 'Unknown';
-                
+
                 if (i <= 3) {
                     console.log(`Bottom row ${i}: VIN(E)="${vin}", Price(J)="${row[9]}" => $${currentPrice}`);
                 }
-                
+
                 if (!vin || vin.length < 17 || currentPrice <= 0) continue;
-                
-                const mapPrice = mapLookup[vin];
-                
-                if (mapPrice === undefined) {
+
+                const mapEntry = mapLookup[vin];
+
+                if (mapEntry === undefined) {
                     notFound++;
                     if (notFound <= 3) console.log(`  VIN not found: ${vin}`);
                     continue;
                 }
-                
+
+                const mapPrice = mapEntry.price;
                 const diff = currentPrice - mapPrice;
                 let status = '';
-                
+
                 if (diff > 0) {
                     status = 'ABOVE';
                     above++;
@@ -430,58 +489,76 @@
                     status = 'AT';
                     at++;
                 }
-                
+
+                // Prefer Bottom file YMM, fall back to MAP file YMM
+                const year = (bYearCol >= 0 ? String(row[bYearCol] || '').trim() : '') || mapEntry.year;
+                const make = (bMakeCol >= 0 ? String(row[bMakeCol] || '').trim() : '') || mapEntry.make;
+                const model = (bModelCol >= 0 ? String(row[bModelCol] || '').trim() : '') || mapEntry.model;
+
                 results.push({
                     status: status,
                     store: store,
+                    year: year,
+                    make: make,
+                    model: model,
                     vin: vin,
                     currentPrice: currentPrice,
                     mapPrice: mapPrice,
                     difference: diff
                 });
             }
-            
+
             console.log(`\nResults: ${results.length} matched`);
             console.log(`Above: ${above}, Below: ${below}, At: ${at}`);
             console.log(`Not found in MAP: ${notFound}`);
-            
+
             // Sort by difference (highest first)
             results.sort((a, b) => b.difference - a.difference);
-            
-            // Get unique stores
-            const stores = [...new Set(results.map(r => r.store))].sort();
-            const storeSelect = document.getElementById('storeFilter');
-            storeSelect.innerHTML = '<option value="all">All Stores</option>';
-            stores.forEach(store => {
-                const option = document.createElement('option');
-                option.value = store;
-                option.textContent = store;
-                storeSelect.appendChild(option);
-            });
-            
+
+            // Populate filter dropdowns
+            function populateFilter(selectId, values) {
+                const allLabel = selectId.replace('Filter', '');
+                const select = document.getElementById(selectId);
+                select.innerHTML = `<option value="all">All ${allLabel.charAt(0).toUpperCase() + allLabel.slice(1)}s</option>`;
+                values.forEach(val => {
+                    const option = document.createElement('option');
+                    option.value = val;
+                    option.textContent = val;
+                    select.appendChild(option);
+                });
+            }
+
+            populateFilter('storeFilter', [...new Set(results.map(r => r.store))].sort());
+            populateFilter('yearFilter', [...new Set(results.map(r => r.year).filter(v => v))].sort());
+            populateFilter('makeFilter', [...new Set(results.map(r => r.make).filter(v => v))].sort());
+            populateFilter('modelFilter', [...new Set(results.map(r => r.model).filter(v => v))].sort());
+
             // Update stats
             document.getElementById('totalStat').textContent = results.length;
             document.getElementById('aboveStat').textContent = above;
             document.getElementById('belowStat').textContent = below;
             document.getElementById('atStat').textContent = at;
-            
+
             // Render table
             renderTable();
-            
+
             document.getElementById('results').classList.add('show');
         }
         
         function renderTable(sortedResults = null) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            
+
             const dataToRender = sortedResults || results;
-            
+
             dataToRender.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.dataset.status = r.status.toLowerCase();
                 tr.dataset.store = r.store;
-                
+                tr.dataset.year = r.year;
+                tr.dataset.make = r.make;
+                tr.dataset.model = r.model;
+
                 let statusClass = 'status-at';
                 let statusSymbol = '✓';
                 if (r.status === 'ABOVE') {
@@ -491,11 +568,13 @@
                     statusClass = 'status-below';
                     statusSymbol = '⬇';
                 }
-                
-                // PRICES WITHOUT COMMAS OR DOLLAR SIGNS
+
                 tr.innerHTML = `
                     <td class="${statusClass}" data-sort="${r.status}">${statusSymbol} ${r.status}</td>
                     <td data-sort="${r.store}">${r.store}</td>
+                    <td data-sort="${r.year}">${r.year}</td>
+                    <td data-sort="${r.make}">${r.make}</td>
+                    <td data-sort="${r.model}">${r.model}</td>
                     <td data-sort="${r.vin}">${r.vin}</td>
                     <td data-sort="${r.currentPrice}">${Math.round(r.currentPrice)}</td>
                     <td data-sort="${r.mapPrice}">${Math.round(r.mapPrice)}</td>
@@ -503,7 +582,7 @@
                         ${r.difference > 0 ? '+' : ''}${Math.round(r.difference)}
                     </td>
                 `;
-                
+
                 tbody.appendChild(tr);
             });
         }
@@ -516,21 +595,21 @@
         }
         
         function applyFilters() {
-            const storeFilter = document.getElementById('storeFilter').value;
-            currentStoreFilter = storeFilter;
-            
+            currentStoreFilter = document.getElementById('storeFilter').value;
+            currentYearFilter = document.getElementById('yearFilter').value;
+            currentMakeFilter = document.getElementById('makeFilter').value;
+            currentModelFilter = document.getElementById('modelFilter').value;
+
             const rows = document.querySelectorAll('#tableBody tr');
             rows.forEach(row => {
                 let showRow = true;
-                
-                if (currentStatusFilter !== 'all' && row.dataset.status !== currentStatusFilter) {
-                    showRow = false;
-                }
-                
-                if (storeFilter !== 'all' && row.dataset.store !== storeFilter) {
-                    showRow = false;
-                }
-                
+
+                if (currentStatusFilter !== 'all' && row.dataset.status !== currentStatusFilter) showRow = false;
+                if (currentStoreFilter !== 'all' && row.dataset.store !== currentStoreFilter) showRow = false;
+                if (currentYearFilter !== 'all' && row.dataset.year !== currentYearFilter) showRow = false;
+                if (currentMakeFilter !== 'all' && row.dataset.make !== currentMakeFilter) showRow = false;
+                if (currentModelFilter !== 'all' && row.dataset.model !== currentModelFilter) showRow = false;
+
                 row.style.display = showRow ? '' : 'none';
             });
         }
@@ -556,10 +635,13 @@
                 switch(columnIndex) {
                     case 0: valA = a.status; valB = b.status; break;
                     case 1: valA = a.store; valB = b.store; break;
-                    case 2: valA = a.vin; valB = b.vin; break;
-                    case 3: valA = a.currentPrice; valB = b.currentPrice; break;
-                    case 4: valA = a.mapPrice; valB = b.mapPrice; break;
-                    case 5: valA = a.difference; valB = b.difference; break;
+                    case 2: valA = a.year; valB = b.year; break;
+                    case 3: valA = a.make; valB = b.make; break;
+                    case 4: valA = a.model; valB = b.model; break;
+                    case 5: valA = a.vin; valB = b.vin; break;
+                    case 6: valA = a.currentPrice; valB = b.currentPrice; break;
+                    case 7: valA = a.mapPrice; valB = b.mapPrice; break;
+                    case 8: valA = a.difference; valB = b.difference; break;
                     default: return 0;
                 }
                 
@@ -582,9 +664,9 @@
                 return;
             }
             
-            const ws_data = [['Status', 'Store', 'VIN', 'Current Price', 'MAP Price', 'Difference']];
+            const ws_data = [['Status', 'Store', 'Year', 'Make', 'Model', 'VIN', 'Current Price', 'MAP Price', 'Difference']];
             results.forEach(r => {
-                ws_data.push([r.status, r.store, r.vin, r.currentPrice, r.mapPrice, r.difference]);
+                ws_data.push([r.status, r.store, r.year, r.make, r.model, r.vin, r.currentPrice, r.mapPrice, r.difference]);
             });
             
             const ws = XLSX.utils.aoa_to_sheet(ws_data);
