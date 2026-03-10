@@ -19,7 +19,7 @@ handler = http.server.SimpleHTTPRequestHandler
 server = http.server.HTTPServer((HOST, PORT), handler)
 
 print(f"Serving on http://{HOST}:{PORT}")
-print(f"Access from your browser: http://12.107.218.98:{PORT}")
+print(f"Access from your browser: http://38.61.96.43:{PORT}")
 print("Press Ctrl+C to stop.")
 
 try:
