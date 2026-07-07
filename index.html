@@ -203,7 +203,7 @@
                     <h3>📊 Bottom Price File</h3>
                     <p>Drop Excel/CSV file or click to browse</p>
                     <p style="color: #667eea; font-size: 0.85rem; margin-top: 10px;">
-                        VIN: Column E | Current Price: Column J
+                        VIN: Column D | Current Price: Column I
                     </p>
                     <input type="file" id="bottomFile" accept=".xlsx,.xls,.csv">
                     <div class="file-name" id="bottomName"></div>
@@ -213,7 +213,7 @@
                     <h3>📋 MAP Details File</h3>
                     <p>Drop Excel/CSV file or click to browse</p>
                     <p style="color: #667eea; font-size: 0.85rem; margin-top: 10px;">
-                        VIN: Column H | MAP Price: Column J
+                        VIN: Column B | MAP Price: Column J
                     </p>
                     <input type="file" id="mapFile" accept=".xlsx,.xls,.csv">
                     <div class="file-name" id="mapName"></div>
@@ -374,8 +374,8 @@
                     
                     console.log('Bottom Price loaded:', jsonData.length, 'rows');
                     if (jsonData[1]) {
-                        console.log('  Sample VIN (E):', jsonData[1][4]);
-                        console.log('  Sample Price (J):', jsonData[1][9]);
+                        console.log('  Sample VIN (D):', jsonData[1][3]);
+                        console.log('  Sample Price (I):', jsonData[1][8]);
                     }
                 } else {
                     mapData = jsonData;
@@ -384,7 +384,7 @@
                     
                     console.log('MAP Details loaded:', jsonData.length, 'rows');
                     if (jsonData[1]) {
-                        console.log('  Sample VIN (H):', jsonData[1][7]);
+                        console.log('  Sample VIN (B):', jsonData[1][1]);
                         console.log('  Sample Price (J):', jsonData[1][9]);
                     }
                 }
@@ -431,11 +431,11 @@
                 const row = mapData[i];
                 if (!row) continue;
 
-                const vin = String(row[7] || '').trim(); // Column H
+                const vin = String(row[1] || '').trim(); // Column B
                 const price = cleanPrice(row[9]); // Column J
 
                 if (i <= 3) {
-                    console.log(`MAP row ${i}: VIN(H)="${vin}", Price(J)="${row[9]}" => $${price}`);
+                    console.log(`MAP row ${i}: VIN(B)="${vin}", Price(J)="${row[9]}" => $${price}`);
                 }
 
                 if (vin && vin.length >= 17) {
@@ -457,12 +457,12 @@
                 const row = bottomData[i];
                 if (!row) continue;
 
-                const vin = String(row[4] || '').trim(); // Column E
-                const currentPrice = cleanPrice(row[9]); // Column J
+                const vin = String(row[3] || '').trim(); // Column D
+                const currentPrice = cleanPrice(row[8]); // Column I
                 const store = row[0] || 'Unknown';
 
                 if (i <= 3) {
-                    console.log(`Bottom row ${i}: VIN(E)="${vin}", Price(J)="${row[9]}" => $${currentPrice}`);
+                    console.log(`Bottom row ${i}: VIN(D)="${vin}", Price(I)="${row[8]}" => $${currentPrice}`);
                 }
 
                 if (!vin || vin.length < 17 || currentPrice <= 0) continue;
