@@ -213,7 +213,7 @@
                     <h3>📋 MAP Details File</h3>
                     <p>Drop Excel/CSV file or click to browse</p>
                     <p style="color: #667eea; font-size: 0.85rem; margin-top: 10px;">
-                        VIN: Column B | MAP Price: Column J
+                        VIN: Column H | MAP Price: Column J
                     </p>
                     <input type="file" id="mapFile" accept=".xlsx,.xls,.csv">
                     <div class="file-name" id="mapName"></div>
@@ -384,7 +384,7 @@
                     
                     console.log('MAP Details loaded:', jsonData.length, 'rows');
                     if (jsonData[1]) {
-                        console.log('  Sample VIN (B):', jsonData[1][1]);
+                        console.log('  Sample VIN (H):', jsonData[1][7]);
                         console.log('  Sample Price (J):', jsonData[1][9]);
                     }
                 }
@@ -431,11 +431,11 @@
                 const row = mapData[i];
                 if (!row) continue;
 
-                const vin = String(row[1] || '').trim(); // Column B
-                const price = cleanPrice(row[9]); // Column J
+                const vin = String(row[7] || '').trim(); // MAP VIN is in Column H (Index 7)
+                const price = cleanPrice(row[9]); // MAP Price is in Column J (Index 9)
 
                 if (i <= 3) {
-                    console.log(`MAP row ${i}: VIN(B)="${vin}", Price(J)="${row[9]}" => $${price}`);
+                    console.log(`MAP row ${i}: VIN(H)="${vin}", Price(J)="${row[9]}" => $${price}`);
                 }
 
                 if (vin && vin.length >= 17) {
@@ -457,8 +457,8 @@
                 const row = bottomData[i];
                 if (!row) continue;
 
-                const vin = String(row[3] || '').trim(); // Column D
-                const currentPrice = cleanPrice(row[8]); // Column I
+                const vin = String(row[3] || '').trim(); // Bottom VIN is in Column D (Index 3)
+                const currentPrice = cleanPrice(row[8]); // Bottom Price is in Column I (Index 8)
                 const store = row[0] || 'Unknown';
 
                 if (i <= 3) {
